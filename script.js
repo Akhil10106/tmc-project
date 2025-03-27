@@ -1,3 +1,30 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+import { getDatabase, ref, set, onValue, push } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+
+// Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyDQA5n-enZk4J5y8LLjlkht8C8j2nDJtAc",
+    authDomain: "tmc-project-6214b.firebaseapp.com",
+    projectId: "tmc-project-6214b",
+    storageBucket: "tmc-project-6214b.firebasestorage.app",
+    messagingSenderId: "295976398450",
+    appId: "1:295976398450:web:f0f4294e3e47641b7e5ceb",
+    measurementId: "G-F8VMW6GR3D",
+    databaseURL: "https://tmc-project-6214b-default-rtdb.firebaseio.com/"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+
+// Test connection
+set(ref(database, "test"), "Connected").then(() => {
+    console.log("Firebase connection successful");
+}).catch((e) => {
+    console.error("Firebase connection failed:", e);
+});
+
+// Variables
 let teachers = [];
 let assignments = [];
 let exams = [];
@@ -11,63 +38,32 @@ let totalExamsChart, completedExamsChart, workloadChart;
 let currentPage = 1;
 const itemsPerPage = 10;
 
-window.onload = function() {
-    showLoading();
-    try {
-        loadDataFromStorage();
-        initializeTheme();
-        loadTeachers();
-        loadAssignments(1);
-        updateFormOptions();
-        loadExamsIntoForm();
-        setupEventListeners();
-    } catch (e) {
-        logError("Initialization failed", e);
-        showNotification("Failed to initialize dashboard", "error");
-    } finally {
-        hideLoading();
-    }
-};
-
+// Toggle functions
 function toggleMobileMenu() {
     const sidebar = document.querySelector('.sidebar');
     sidebar.classList.toggle('active');
+    console.log("Sidebar toggled:", sidebar.classList.contains('active')); // Debug
 }
 
-function loadDataFromStorage() {
-    try {
-        teachers = JSON.parse(localStorage.getItem("teachers")) || [];
-        assignments = JSON.parse(localStorage.getItem("assignments")) || [];
-        exams = JSON.parse(localStorage.getItem("exams")) || [];
-        subjectCodes = JSON.parse(localStorage.getItem("subjectCodes")) || [];
-        shifts = JSON.parse(localStorage.getItem("shifts")) || [];
-        packetCodes = JSON.parse(localStorage.getItem("packetCodes")) || [];
-        totalExamsOptions = JSON.parse(localStorage.getItem("totalExamsOptions")) || [];
-    } catch (e) {
-        logError("Failed to load data from storage", e);
-        teachers = []; assignments = []; exams = [];
-        subjectCodes = []; shifts = []; packetCodes = []; totalExamsOptions = [];
-    }
+function toggleSettings() {
+    const modal = document.getElementById("settingsModal");
+    modal.style.display = modal.style.display === "flex" ? "none" : "flex";
 }
 
-function initializeTheme() {
-    const savedTheme = localStorage.getItem("theme") || "light";
-    document.documentElement.setAttribute("data-theme", savedTheme);
-    const themeSelect = document.getElementById("themeSelect");
-    if (themeSelect) themeSelect.value = savedTheme;
+function toggleSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    const isVisible = section.style.display === "block";
+    document.querySelectorAll(".form-section, .data-section").forEach(s => s.style.display = "none");
+    section.style.display = isVisible ? "none" : "block";
 }
 
-function setupEventListeners() {
-    document.getElementById("saveTeacherBtn").addEventListener("click", addTeacher);
-    document.getElementById("saveSetupBtn").addEventListener("click", saveSetup);
-    document.getElementById("saveAssignmentBtn").addEventListener("click", () => saveAssignment(null));
-    document.getElementById("saveExamBtn").addEventListener("click", saveExam);
-}
-
-function changeTheme() {
-    const theme = document.getElementById("themeSelect").value;
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("theme", theme);
+// Utility functions (moved updateFormOptions here)
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+    };
 }
 
 function showNotification(message, type = "success") {
@@ -94,11 +90,12 @@ function logError(message, error) {
     console.error(message, error);
 }
 
-function toggleSection(sectionId) {
-    const section = document.getElementById(sectionId);
-    const isVisible = section.style.display === "block";
-    document.querySelectorAll(".form-section, .data-section").forEach(s => s.style.display = "none");
-    section.style.display = isVisible ? "none" : "block";
+function resetForm(sectionId) {
+    document.getElementById(sectionId)?.querySelectorAll("input, select").forEach(el => {
+        if (el.type === "checkbox") el.checked = false;
+        else if (el.tagName === "SELECT") el.selectedIndex = 0;
+        else el.value = "";
+    });
 }
 
 function updateFormOptions() {
@@ -110,22 +107,281 @@ function updateFormOptions() {
         filterTeacher: document.getElementById("filterTeacher")
     };
 
-    elements.teacherId.innerHTML = '<option value="">Select Teacher</option>' + 
-        teachers.map(t => `<option value="${t.id}">${t.name} (${t.id})</option>`).join("");
-    elements.subjectCode.innerHTML = '<option value="">Select Subject Code</option>' + 
-        subjectCodes.map(c => `<option value="${c}">${c}</option>`).join("");
-    elements.shift.innerHTML = '<option value="">Select Shift</option>' + 
-        shifts.map(s => `<option value="${s}">${s}</option>`).join("");
-    elements.packetCode.innerHTML = '<option value="">Select Packet Code</option>' + 
-        packetCodes.map(p => `<option value="${p}">${p}</option>`).join("");
-    elements.filterTeacher.innerHTML = '<option value="">All Teachers</option>' + 
-        teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+    // Get all assigned subjectCode-packetCode combinations
+    const assignedCombinations = assignments.map(a => ({
+        subjectCode: a.subjectCode,
+        packetCode: a.packetCode
+    }));
 
+    // Filter available subject codes and packet codes
+    const availableSubjectCodes = subjectCodes.filter(code => 
+        !assignedCombinations.some(combo => combo.subjectCode === code)
+    );
+    const availablePacketCodes = packetCodes.filter(code => 
+        !assignedCombinations.some(combo => combo.packetCode === code)
+    );
+
+    // Populate teacher dropdown
+    if (elements.teacherId) {
+        elements.teacherId.innerHTML = '<option value="">Select Teacher</option>' + 
+            teachers.map(t => `<option value="${t.id}">${t.name} (${t.id})</option>`).join("");
+    }
+
+    // Populate subject code dropdown with only unassigned codes
+    if (elements.subjectCode) {
+        elements.subjectCode.innerHTML = '<option value="">Select Subject Code</option>' + 
+            availableSubjectCodes.map(c => `<option value="${c}">${c}</option>`).join("");
+    }
+
+    // Populate shift dropdown
+    if (elements.shift) {
+        elements.shift.innerHTML = '<option value="">Select Shift</option>' + 
+            shifts.map(s => `<option value="${s}">${s}</option>`).join("");
+    }
+
+    // Populate packet code dropdown with only unassigned codes
+    if (elements.packetCode) {
+        elements.packetCode.innerHTML = '<option value="">Select Packet Code</option>' + 
+            availablePacketCodes.map(p => `<option value="${p}">${p}</option>`).join("");
+    }
+
+    // Populate filter teacher dropdown
+    if (elements.filterTeacher) {
+        elements.filterTeacher.innerHTML = '<option value="">All Teachers</option>' + 
+            teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+    }
+
+    // Update setup form inputs
     document.getElementById("subjectCodesInput").value = subjectCodes.join(", ");
     document.getElementById("shiftsInput").value = shifts.join(", ");
     document.getElementById("packetCodesInput").value = packetCodes.join(", ");
     document.getElementById("totalExamsInput").value = totalExamsOptions.join(", ");
+
+    // Load exams into form
     loadExamsIntoForm();
+}
+
+// Data loading and setup
+function setupRealTimeListeners() {
+    onValue(ref(database, "teachers"), (snapshot) => {
+        const data = snapshot.val();
+        teachers = data ? Object.keys(data).map(key => ({ ...data[key], firebaseKey: key })) : [];
+        loadTeachers();
+        updateFormOptions();
+    });
+
+    onValue(ref(database, "assignments"), (snapshot) => {
+        const data = snapshot.val();
+        assignments = data ? Object.keys(data).map(key => ({ ...data[key], firebaseKey: key })) : [];
+        loadAssignments(currentPage);
+        loadAnalytics();
+    });
+
+    onValue(ref(database, "exams"), (snapshot) => {
+        const data = snapshot.val();
+        exams = data ? Object.keys(data).map(key => ({ ...data[key], firebaseKey: key })) : [];
+        loadExamsIntoForm();
+    });
+}
+
+function loadDataFromStorage() {
+    showLoading();
+    const promises = [
+        new Promise((resolve, reject) => {
+            onValue(ref(database, "teachers"), (snapshot) => {
+                const data = snapshot.val();
+                teachers = data ? Object.keys(data).map(key => ({ ...data[key], firebaseKey: key })) : [];
+                resolve();
+            }, { onlyOnce: true }, reject);
+        }),
+        new Promise((resolve, reject) => {
+            onValue(ref(database, "assignments"), (snapshot) => {
+                const data = snapshot.val();
+                assignments = data ? Object.keys(data).map(key => ({ ...data[key], firebaseKey: key })) : [];
+                resolve();
+            }, { onlyOnce: true }, reject);
+        }),
+        new Promise((resolve, reject) => {
+            onValue(ref(database, "exams"), (snapshot) => {
+                const data = snapshot.val();
+                exams = data ? Object.keys(data).map(key => ({ ...data[key], firebaseKey: key })) : [];
+                resolve();
+            }, { onlyOnce: true }, reject);
+        }),
+        new Promise((resolve, reject) => {
+            onValue(ref(database, "subjectCodes"), (snapshot) => {
+                subjectCodes = snapshot.val() || [];
+                resolve();
+            }, { onlyOnce: true }, reject);
+        }),
+        new Promise((resolve, reject) => {
+            onValue(ref(database, "shifts"), (snapshot) => {
+                shifts = snapshot.val() || [];
+                resolve();
+            }, { onlyOnce: true }, reject);
+        }),
+        new Promise((resolve, reject) => {
+            onValue(ref(database, "packetCodes"), (snapshot) => {
+                packetCodes = snapshot.val() || [];
+                resolve();
+            }, { onlyOnce: true }, reject);
+        }),
+        new Promise((resolve, reject) => {
+            onValue(ref(database, "totalExamsOptions"), (snapshot) => {
+                totalExamsOptions = snapshot.val() || [];
+                resolve();
+            }, { onlyOnce: true }, reject);
+        })
+    ];
+
+    Promise.all(promises)
+        .then(() => {
+            loadTeachers();
+            loadAssignments(1);
+            updateFormOptions();
+            loadAnalytics();
+            hideLoading();
+        })
+        .catch((e) => {
+            logError("Failed to load data from Firebase", e);
+            showNotification("Failed to load data from Firebase", "error");
+            teachers = []; assignments = []; exams = [];
+            subjectCodes = []; shifts = []; packetCodes = []; totalExamsOptions = [];
+            hideLoading();
+        });
+}
+
+function initializeTheme() {
+    const savedTheme = localStorage.getItem("theme") || "light";
+    document.documentElement.setAttribute("data-theme", savedTheme);
+    const themeSelect = document.getElementById("themeSelect");
+    if (themeSelect) themeSelect.value = savedTheme;
+}
+
+function setupEventListeners() {
+    // Form buttons
+    document.getElementById("saveTeacherBtn")?.addEventListener("click", addTeacher);
+    document.getElementById("saveSetupBtn")?.addEventListener("click", saveSetup);
+    document.getElementById("saveAssignmentBtn")?.addEventListener("click", () => saveAssignment(null));
+    document.getElementById("saveExamBtn")?.addEventListener("click", saveExam);
+
+    // Sidebar navigation (updated with auto-close)
+    document.getElementById("addTeacherBtn")?.addEventListener("click", () => {
+        toggleSection("teacherFormSection");
+        toggleMobileMenu();
+    });
+    document.getElementById("setupBtn")?.addEventListener("click", () => {
+        toggleSection("setupFormSection");
+        toggleMobileMenu();
+    });
+    document.getElementById("assignTaskBtn")?.addEventListener("click", () => {
+        toggleSection("assignmentFormSection");
+        toggleMobileMenu();
+    });
+    document.getElementById("assignmentsBtn")?.addEventListener("click", () => {
+        showAssignmentsOnly();
+        toggleMobileMenu();
+    });
+    document.getElementById("examsBtn")?.addEventListener("click", () => {
+        toggleSection("examSchedulerSection");
+        toggleMobileMenu();
+    });
+    document.getElementById("analyticsBtn")?.addEventListener("click", () => {
+        showAnalyticsOnly();
+        toggleMobileMenu();
+    });
+
+    // Header and mobile header
+    document.getElementById("headerTitle")?.addEventListener("click", goToMainPage);
+    document.getElementById("mobileHeaderTitle")?.addEventListener("click", goToMainPage);
+    document.getElementById("hamburgerBtn")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleMobileMenu();
+    });
+    document.querySelector(".close-sidebar")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleMobileMenu();
+    });
+
+    // Settings modal
+    document.getElementById("settingsBtn")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleSettings();
+    });
+    document.getElementById("closeSettingsBtn")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleSettings();
+    });
+    document.getElementById("themeSelect")?.addEventListener("change", changeTheme);
+    document.getElementById("exportTeachersBtn")?.addEventListener("click", () => exportToCSV("teachers"));
+    document.getElementById("exportAssignmentsBtn")?.addEventListener("click", () => exportToCSV("assignments"));
+    document.getElementById("exportRecordsBtn")?.addEventListener("click", () => exportToCSV("records"));
+
+    // Exam calendar
+    document.getElementById("viewExamCalendarBtn")?.addEventListener("click", showExamCalendar);
+
+    // Assignment filters and pagination
+    document.getElementById("searchInput")?.addEventListener("keyup", debounce(() => loadAssignments(1), 300));
+    document.getElementById("filterTeacher")?.addEventListener("click", () => loadAssignments(1));
+    document.getElementById("filterStatus")?.addEventListener("click", () => loadAssignments(1));
+    document.getElementById("bulkCompleteBtn")?.addEventListener("click", bulkCompleteAssignments);
+    document.getElementById("prevPageBtn")?.addEventListener("click", () => loadAssignments(currentPage - 1));
+    document.getElementById("nextPageBtn")?.addEventListener("click", () => loadAssignments(currentPage + 1));
+
+    // Event delegation for dynamic buttons
+    document.querySelector(".main-content").addEventListener("click", (e) => {
+        const target = e.target;
+
+        // Edit teacher
+        if (target.classList.contains("edit-teacher-btn")) {
+            const id = target.dataset.id;
+            editTeacher(id);
+        }
+
+        // Delete teacher
+        if (target.classList.contains("delete-teacher-btn")) {
+            const id = target.dataset.id;
+            deleteTeacher(id);
+        }
+
+        // Edit assignment
+        if (target.classList.contains("edit-assignment-btn")) {
+            const id = target.dataset.id;
+            editAssignment(id);
+        }
+
+        // Delete assignment
+        if (target.classList.contains("delete-assignment-btn")) {
+            const id = target.dataset.id;
+            deleteAssignment(id);
+        }
+
+        // Mark assignment completed
+        if (target.classList.contains("mark-completed-btn")) {
+            const id = target.dataset.id;
+            markAssignmentCompleted(id);
+        }
+    });
+}
+
+// Main functions
+function goToMainPage() {
+    document.querySelectorAll(".form-section, .data-section").forEach(s => s.style.display = "none");
+    document.querySelectorAll(".data-section:not(#assignmentsSection)").forEach(s => s.style.display = "block");
+    loadTeachers();
+    loadAnalytics();
+}
+
+function showAssignmentsOnly() {
+    document.querySelectorAll(".form-section, .data-section").forEach(s => s.style.display = "none");
+    document.getElementById("assignmentsSection").style.display = "block";
+    loadAssignments(1);
+}
+
+function showAnalyticsOnly() {
+    document.querySelectorAll(".form-section, .data-section").forEach(s => s.style.display = "none");
+    document.getElementById("analyticsSection").style.display = "block";
+    loadAnalytics();
 }
 
 function addTeacher() {
@@ -149,15 +405,15 @@ function addTeacher() {
             return;
         }
 
-        const teacher = { id: "t" + (teachers.length + 1), name, email, phone };
-        teachers.push(teacher);
-        saveToStorage("teachers", teachers);
-        
-        resetForm("teacherForm");
-        goToMainPage();
-        loadTeachers();
-        updateFormOptions();
-        showNotification("Teacher added successfully!");
+        const newTeacherRef = push(ref(database, "teachers"));
+        const teacher = { id: newTeacherRef.key, name, email, phone };
+        set(newTeacherRef, teacher).then(() => {
+            resetForm("teacherForm");
+            goToMainPage();
+            showNotification("Teacher added successfully!");
+        }).catch((e) => {
+            throw new Error("Firebase save failed: " + e.message);
+        });
     } catch (e) {
         logError("Failed to add teacher", e);
         showNotification("Failed to add teacher: " + e.message, "error");
@@ -193,17 +449,17 @@ function saveTeacherEdit(id) {
             return;
         }
 
-        const teacherIndex = teachers.findIndex(t => t.id === id);
-        teachers[teacherIndex] = { id, name, email, phone };
-        saveToStorage("teachers", teachers);
-        
-        resetForm("teacherForm");
-        document.getElementById("saveTeacherBtn").textContent = "Done";
-        document.getElementById("saveTeacherBtn").onclick = addTeacher;
-        toggleSection("teacherFormSection");
-        loadTeachers();
-        updateFormOptions();
-        showNotification("Teacher updated successfully!");
+        const teacher = teachers.find(t => t.id === id);
+        const updatedTeacher = { ...teacher, name, email, phone };
+        set(ref(database, `teachers/${teacher.firebaseKey}`), updatedTeacher).then(() => {
+            resetForm("teacherForm");
+            document.getElementById("saveTeacherBtn").textContent = "Done";
+            document.getElementById("saveTeacherBtn").onclick = addTeacher;
+            toggleSection("teacherFormSection");
+            showNotification("Teacher updated successfully!");
+        }).catch((e) => {
+            throw new Error("Firebase save failed: " + e.message);
+        });
     } catch (e) {
         logError("Failed to save teacher edit", e);
         showNotification("Failed to update teacher: " + e.message, "error");
@@ -216,16 +472,25 @@ function deleteTeacher(id) {
     showLoading();
     try {
         if (confirm("Are you sure? This will delete all related assignments and exams.")) {
+            const teacherToDelete = teachers.find(t => t.id === id);
+            if (!teacherToDelete) {
+                showNotification("Teacher not found!", "error");
+                return;
+            }
+
             teachers = teachers.filter(t => t.id !== id);
             assignments = assignments.filter(a => a.teacherId !== id);
-            exams = exams.filter(e => e.checkingTeacher === id);
-            saveToStorage("teachers", teachers);
-            saveToStorage("assignments", assignments);
-            saveToStorage("exams", exams);
-            loadTeachers();
-            loadAssignments(1);
-            updateFormOptions();
-            showNotification("Teacher deleted successfully!");
+            exams = exams.filter(e => e.checkingTeacher !== id);
+
+            Promise.all([
+                set(ref(database, "teachers"), teachers.reduce((obj, t) => ({ ...obj, [t.firebaseKey]: t }), {})),
+                set(ref(database, "assignments"), assignments.reduce((obj, a) => ({ ...obj, [a.firebaseKey]: a }), {})),
+                set(ref(database, "exams"), exams.reduce((obj, e) => ({ ...obj, [e.firebaseKey]: e }), {}))
+            ]).then(() => {
+                showNotification("Teacher deleted successfully!");
+            }).catch((e) => {
+                throw new Error("Firebase save failed: " + e.message);
+            });
         }
     } catch (e) {
         logError("Failed to delete teacher", e);
@@ -243,8 +508,8 @@ function loadTeachers() {
             <td>${t.email}</td>
             <td>${t.phone}</td>
             <td>
-                <button class="action-btn edit-btn" title="Edit teacher" onclick="editTeacher('${t.id}')">Edit</button>
-                <button class="action-btn delete-btn" title="Delete teacher" onclick="deleteTeacher('${t.id}')">Delete</button>
+                <button class="action-btn edit-teacher-btn" data-id="${t.id}" title="Edit teacher">Edit</button>
+                <button class="action-btn delete-teacher-btn" data-id="${t.id}" title="Delete teacher">Delete</button>
             </td>
         </tr>`).join("");
 }
@@ -257,14 +522,18 @@ function saveSetup() {
         packetCodes = document.getElementById("packetCodesInput").value.split(",").map(s => s.trim()).filter(s => s);
         totalExamsOptions = document.getElementById("totalExamsInput").value.split(",").map(s => s.trim()).filter(s => s);
         
-        saveToStorage("subjectCodes", subjectCodes);
-        saveToStorage("shifts", shifts);
-        saveToStorage("packetCodes", packetCodes);
-        saveToStorage("totalExamsOptions", totalExamsOptions);
-        
-        toggleSection("setupFormSection");
-        updateFormOptions();
-        showNotification("Setup options saved successfully!");
+        Promise.all([
+            set(ref(database, "subjectCodes"), subjectCodes),
+            set(ref(database, "shifts"), shifts),
+            set(ref(database, "packetCodes"), packetCodes),
+            set(ref(database, "totalExamsOptions"), totalExamsOptions)
+        ]).then(() => {
+            toggleSection("setupFormSection");
+            updateFormOptions();
+            showNotification("Setup options saved successfully!");
+        }).catch((e) => {
+            throw new Error("Firebase save failed: " + e.message);
+        });
     } catch (e) {
         logError("Failed to save setup", e);
         showNotification("Failed to save setup: " + e.message, "error");
@@ -301,25 +570,20 @@ function saveAssignment(assignmentId) {
         }
 
         const assignment = {
-            id: assignmentId || "a" + (assignments.length + 1),
+            id: assignmentId || push(ref(database, "assignments")).key,
             ...formData,
             date: new Date().toISOString().split("T")[0],
             year: currentYear
         };
 
-        if (assignmentId) {
-            const index = assignments.findIndex(a => a.id === assignmentId);
-            assignments[index] = assignment;
-        } else {
-            assignments.push(assignment);
-        }
-
-        saveToStorage("assignments", assignments);
-        resetForm("assignForm");
-        goToMainPage();
-        loadAssignments(1);
-        loadAnalytics();
-        showNotification("Assignment saved successfully!");
+        set(ref(database, "assignments/" + assignment.id), assignment).then(() => {
+            resetForm("assignForm");
+            goToMainPage();
+            updateFormOptions();
+            showNotification("Assignment saved successfully!");
+        }).catch((e) => {
+            throw new Error("Firebase save failed: " + e.message);
+        });
     } catch (e) {
         logError("Failed to save assignment", e);
         showNotification("Failed to save assignment: " + e.message, "error");
@@ -352,11 +616,19 @@ function deleteAssignment(id) {
     showLoading();
     try {
         if (confirm("Are you sure you want to delete this assignment?")) {
-            assignments = assignments.filter(a => a.id !== id);
-            saveToStorage("assignments", assignments);
-            loadAssignments(currentPage);
-            loadAnalytics();
-            showNotification("Assignment deleted successfully!");
+            const assignmentToDelete = assignments.find(a => a.id === id);
+            if (!assignmentToDelete) {
+                showNotification("Assignment not found!", "error");
+                return;
+            }
+            set(ref(database, `assignments/${assignmentToDelete.firebaseKey}`), null).then(() => {
+                loadAssignments(currentPage);
+                loadAnalytics();
+                updateFormOptions();
+                showNotification("Assignment deleted successfully!");
+            }).catch((e) => {
+                throw new Error("Firebase save failed: " + e.message);
+            });
         }
     } catch (e) {
         logError("Failed to delete assignment", e);
@@ -375,10 +647,13 @@ function markAssignmentCompleted(id) {
             return;
         }
         assignment.status = "Completed";
-        saveToStorage("assignments", assignments);
-        loadAssignments(currentPage);
-        loadAnalytics();
-        showNotification("Assignment marked as completed!");
+        set(ref(database, `assignments/${assignment.firebaseKey}`), assignment).then(() => {
+            loadAssignments(currentPage);
+            loadAnalytics();
+            showNotification("Assignment marked as completed!");
+        }).catch((e) => {
+            throw new Error("Firebase save failed: " + e.message);
+        });
     } catch (e) {
         logError("Failed to mark assignment completed", e);
         showNotification("Failed to complete assignment: " + e.message, "error");
@@ -396,11 +671,17 @@ function bulkCompleteAssignments() {
             return;
         }
         if (confirm(`Mark ${incomplete.length} assignments as completed?`)) {
-            assignments = assignments.map(a => a.status !== "Completed" ? { ...a, status: "Completed" } : a);
-            saveToStorage("assignments", assignments);
-            loadAssignments(currentPage);
-            loadAnalytics();
-            showNotification("Assignments marked as completed!");
+            const updates = incomplete.map(a => {
+                a.status = "Completed";
+                return set(ref(database, `assignments/${a.firebaseKey}`), a);
+            });
+            Promise.all(updates).then(() => {
+                loadAssignments(currentPage);
+                loadAnalytics();
+                showNotification("Assignments marked as completed!");
+            }).catch((e) => {
+                throw new Error("Firebase save failed: " + e.message);
+            });
         }
     } catch (e) {
         logError("Failed to bulk complete assignments", e);
@@ -440,9 +721,9 @@ function loadAssignments(page) {
                 <td>${a.dueDate}</td>
                 <td>${a.status}</td>
                 <td>
-                    <button class="action-btn edit-btn" title="Edit assignment" onclick="editAssignment('${a.id}')">Edit</button>
-                    <button class="action-btn delete-btn" title="Delete assignment" onclick="deleteAssignment('${a.id}')">Delete</button>
-                    <button class="action-btn mark-completed-btn" title="Mark as completed" onclick="markAssignmentCompleted('${a.id}')" ${a.status === "Completed" ? "disabled" : ""}>
+                    <button class="action-btn edit-assignment-btn" data-id="${a.id}" title="Edit assignment">Edit</button>
+                    <button class="action-btn delete-assignment-btn" data-id="${a.id}" title="Delete assignment">Delete</button>
+                    <button class="action-btn mark-completed-btn" data-id="${a.id}" title="Mark as completed" ${a.status === "Completed" ? "disabled" : ""}>
                         Mark Completed
                     </button>
                 </td>
@@ -463,6 +744,7 @@ function loadAnalytics() {
         const analyticsSection = document.getElementById("analyticsSection");
         if (teachers.length === 0 || assignments.length === 0) {
             analyticsSection.innerHTML = "<h2>Analytics</h2><p>No data available yet.</p>";
+            hideLoading();
             return;
         }
 
@@ -522,7 +804,7 @@ function saveExam() {
     showLoading();
     try {
         const exam = {
-            id: "e" + (exams.length + 1),
+            id: push(ref(database, "exams")).key,
             title: document.getElementById("examTitle").value.trim(),
             subject: document.getElementById("examSubject").value,
             shift: document.getElementById("examShift").value,
@@ -542,12 +824,13 @@ function saveExam() {
             return;
         }
 
-        exams.push(exam);
-        saveToStorage("exams", exams);
-        resetForm("examSchedulerSection");
-        toggleSection("examSchedulerSection");
-        showNotification("Exam scheduled successfully!");
-        loadAnalytics();
+        set(ref(database, "exams/" + exam.id), exam).then(() => {
+            resetForm("examSchedulerSection");
+            toggleSection("examSchedulerSection");
+            showNotification("Exam scheduled successfully!");
+        }).catch((e) => {
+            throw new Error("Firebase save failed: " + e.message);
+        });
     } catch (e) {
         logError("Failed to save exam", e);
         showNotification("Failed to save exam: " + e.message, "error");
@@ -615,43 +898,22 @@ function exportToCSV(type) {
     }
 }
 
-function saveToStorage(key, data) {
+function changeTheme() {
+    const theme = document.getElementById("themeSelect").value;
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+}
+
+// Initialization
+window.onload = function() {
+    showLoading();
     try {
-        localStorage.setItem(key, JSON.stringify(data));
+        loadDataFromStorage();
+        initializeTheme();
+        setupEventListeners();
+        setupRealTimeListeners();
     } catch (e) {
-        logError("Failed to save to localStorage", e);
-        showNotification("Data saved locally but storage failed", "error");
+        logError("Initialization failed", e);
+        showNotification("Failed to initialize dashboard", "error");
     }
-}
-
-function resetForm(sectionId) {
-    document.getElementById(sectionId)?.querySelectorAll("input, select").forEach(el => {
-        if (el.type === "checkbox") el.checked = false;
-        else if (el.tagName === "SELECT") el.selectedIndex = 0;
-        else el.value = "";
-    });
-}
-
-function toggleSettings() {
-    const modal = document.getElementById("settingsModal");
-    modal.style.display = modal.style.display === "block" ? "none" : "block";
-}
-
-function showAssignmentsOnly() {
-    document.querySelectorAll(".form-section, .data-section").forEach(s => s.style.display = "none");
-    document.getElementById("assignmentsSection").style.display = "block";
-    loadAssignments(1);
-}
-
-function showAnalyticsOnly() {
-    document.querySelectorAll(".form-section, .data-section").forEach(s => s.style.display = "none");
-    document.getElementById("analyticsSection").style.display = "block";
-    loadAnalytics();
-}
-
-function goToMainPage() {
-    document.querySelectorAll(".form-section, .data-section").forEach(s => s.style.display = "none");
-    document.querySelectorAll(".data-section:not(#assignmentsSection)").forEach(s => s.style.display = "block");
-    loadTeachers();
-    loadAnalytics();
-}
+};
