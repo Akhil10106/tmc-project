@@ -11,25 +11,26 @@
 <body>
     <div class="dashboard">
         <header class="mobile-header">
-            <h1 onclick="goToMainPage()">TMC Dashboard</h1>
-            <button class="hamburger" onclick="toggleMobileMenu()">☰</button>
+            <h1 id="mobileHeaderTitle">TMC Dashboard</h1>
+            <button class="hamburger" id="hamburgerBtn">☰</button>
         </header>
         <aside class="sidebar">
             <h2>TMC</h2>
+            <button class="close-sidebar">×</button>
             <nav>
-                <button title="Add a new teacher" onclick="toggleSection('teacherFormSection'); toggleMobileMenu()">👩‍🏫 Add Teacher</button>
-                <button title="Configure system settings" onclick="toggleSection('setupFormSection'); toggleMobileMenu()">⚙️ Setup</button>
-                <button title="Create a new assignment" onclick="toggleSection('assignmentFormSection'); toggleMobileMenu()">📝 Assign Task</button>
-                <button title="View all assignments" onclick="showAssignmentsOnly(); toggleMobileMenu()">📋 Assignments</button>
-                <button title="Schedule an exam" onclick="toggleSection('examSchedulerSection'); toggleMobileMenu()">🗓️ Exams</button>
-                <button title="View analytics dashboard" onclick="showAnalyticsOnly(); toggleMobileMenu()">📈 Analytics</button>
+                <button title="Add a new teacher" id="addTeacherBtn">👩‍🏫 Add Teacher</button>
+                <button title="Configure system settings" id="setupBtn">⚙️ Setup</button>
+                <button title="Create a new assignment" id="assignTaskBtn">📝 Assign Task</button>
+                <button title="View all assignments" id="assignmentsBtn">📋 Assignments</button>
+                <button title="Schedule an exam" id="examsBtn">🗓️ Exams</button>
+                <button title="View analytics dashboard" id="analyticsBtn">📈 Analytics</button>
             </nav>
-            <button class="settings-btn" title="Open settings" onclick="toggleSettings()">⚙️ Settings</button>
+            <button class="settings-btn" title="Open settings" id="settingsBtn">⚙️ Settings</button>
         </aside>
 
         <main class="main-content">
             <header class="header">
-                <h1 onclick="goToMainPage()">TMC Dashboard</h1>
+                <h1 id="headerTitle">TMC Dashboard</h1>
                 <div id="loading" class="loading" style="display: none;">Loading...</div>
             </header>
 
@@ -39,7 +40,7 @@
                     <input type="text" id="teacherName" placeholder="Name" required>
                     <input type="email" id="teacherEmail" placeholder="Email" required>
                     <input type="text" id="teacherPhone" placeholder="Phone">
-                    <button type="button" id="saveTeacherBtn" class="form-btn">Done</button>
+                    <button type="button" id="saveTeacherBtn" class="form-btn save-btn">Done</button>
                 </form>
             </section>
 
@@ -50,7 +51,7 @@
                     <input type="text" id="shiftsInput" placeholder="Shifts (e.g., Morning, Afternoon)">
                     <input type="text" id="packetCodesInput" placeholder="Packet Codes (e.g., P001, P002)">
                     <input type="text" id="totalExamsInput" placeholder="Total Exams (e.g., 25, 50)">
-                    <button type="button" id="saveSetupBtn" class="form-btn">Save</button>
+                    <button type="button" id="saveSetupBtn" class="form-btn save-btn">Save</button>
                 </form>
             </section>
 
@@ -87,8 +88,8 @@
                         <option value="In Progress">In Progress</option>
                         <option value="Completed">Completed</option>
                     </select>
-                    <button type="button" id="saveExamBtn" class="form-btn">Save</button>
-                    <button type="button" id="viewExamCalendarBtn" class="form-btn" onclick="showExamCalendar()">Calendar</button>
+                    <button type="button" id="saveExamBtn" class="form-btn save-btn">Save</button>
+                    <button type="button" id="viewExamCalendarBtn" class="form-btn view-btn">Calendar</button>
                 </form>
                 <div id="examCalendar" style="display: none;"></div>
             </section>
@@ -104,24 +105,24 @@
             <section class="data-section" id="assignmentsSection">
                 <h2>Assignments</h2>
                 <div class="filter-bar">
-                    <input type="text" id="searchInput" placeholder="Search..." onkeyup="loadAssignments(1)">
-                    <select id="filterTeacher" onchange="loadAssignments(1)"></select>
-                    <select id="filterStatus" onchange="loadAssignments(1)">
+                    <input type="text" id="searchInput" placeholder="Search...">
+                    <select id="filterTeacher"></select>
+                    <select id="filterStatus">
                         <option value="">All Status</option>
                         <option value="Assigned">Assigned</option>
                         <option value="In Progress">In Progress</option>
                         <option value="Completed">Completed</option>
                     </select>
-                    <button class="form-btn" onclick="bulkCompleteAssignments()">Bulk Complete</button>
+                    <button class="form-btn save-btn" id="bulkCompleteBtn">Bulk Complete</button>
                 </div>
                 <table id="assignmentTable">
                     <thead><tr><th>Teacher</th><th>Subject</th><th>Shift</th><th>Packet</th><th>Exams</th><th>Due Date</th><th>Status</th><th>Actions</th></tr></thead>
                     <tbody></tbody>
                 </table>
                 <div class="pagination">
-                    <button onclick="loadAssignments(currentPage - 1)">Previous</button>
+                    <button id="prevPageBtn">Previous</button>
                     <span id="pageInfo"></span>
-                    <button onclick="loadAssignments(currentPage + 1)">Next</button>
+                    <button id="nextPageBtn">Next</button>
                 </div>
             </section>
 
@@ -136,22 +137,29 @@
 
             <div id="settingsModal" class="modal" style="display: none;">
                 <div class="modal-content">
-                    <span class="close-btn" onclick="toggleSettings()">×</span>
+                    <span class="close-btn" id="closeSettingsBtn">×</span>
                     <h2>Settings</h2>
                     <div class="settings-options">
                         <label>Theme:</label>
-                        <select id="themeSelect" onchange="changeTheme()">
+                        <select id="themeSelect">
                             <option value="light">Light</option>
                             <option value="dark">Dark</option>
                         </select>
-                        <button onclick="exportToCSV('teachers')">⬇️ Export Teachers</button>
-                        <button onclick="exportToCSV('assignments')">⬇️ Export Assignments</button>
-                        <button onclick="exportToCSV('records')">⬇️ Export Records</button>
+                        <button id="exportTeachersBtn">⬇️ Export Teachers</button>
+                        <button id="exportAssignmentsBtn">⬇️ Export Assignments</button>
+                        <button id="exportRecordsBtn">⬇️ Export Records</button>
                     </div>
                 </div>
             </div>
         </main>
     </div>
-    <script src="script.js"></script>
+
+    <!-- External Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Firebase SDKs (removed compat versions since we're using modular imports in script.js) -->
+    <!-- <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script> -->
+    <!-- <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script> -->
+    <!-- Your script -->
+    <script type="module" src="script.js"></script>
 </body>
 </html>
