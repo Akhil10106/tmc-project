@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TMC Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeLoginBtn">×</span>
+            <h2>Login to TMC Dashboard</h2>
+            <form id="loginForm" class="form-grid">
+                <input type="email" id="loginEmail" placeholder="Email" required>
+                <input type="password" id="loginPassword" placeholder="Password" required>
+                <button type="submit" id="loginBtn" class="form-btn">Login</button>
+            </form>
+            <div id="loginError" class="error" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div id="registerModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-btn" id="closeRegisterBtn">×</span>
+            <h2>Register for TMC Dashboard</h2>
+            <form id="registerForm" class="form-grid">
+                <input type="email" id="registerEmail" placeholder="Email" required>
+                <input type="password" id="registerPassword" placeholder="Password" required>
+                <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+                <button type="submit" id="registerBtn" class="form-btn">Register</button>
+            </form>
+            <div id="registerError" class="error" style="display: none;"></div>
+            <p>
+                <span style="color: #3498db;">Already have an account?</span>
+                <span id="showLoginLink" style="color: #2ecc71; cursor: pointer;">Login here</span>
+            </p>
+        </div>
+    </div>
+
+    <!-- Dashboard Container -->
+    <div class="dashboard" id="dashboardContainer" style="display: none;">
+        <header class="mobile-header">
+            <h1 id="mobileHeaderTitle">TMC Dashboard</h1>
+            <button class="hamburger" id="hamburgerBtn" aria-label="Toggle menu">☰</button>
+        </header>
+        <aside class="sidebar" id="sidebar">
+            <h2>TMC</h2>
+            <button class="close-sidebar">×</button>
+            <nav>
+                <button title="Add a new teacher" id="addTeacherBtn">👩‍🏫 Add Teacher</button>
+                <button title="Configure system settings" id="setupBtn">⚙️ Setup</button>
+                <button title="Create a new assignment" id="assignTaskBtn">📝 Assign Task</button>
+                <button title="View all assignments" id="assignmentsBtn">📋 Assignments</button>
+                <button title="Schedule an exam" id="examsBtn">🗓️ Exams</button>
+                <button title="View analytics dashboard" id="analyticsBtn">📈 Analytics</button>
+            </nav>
+            <button class="settings-btn" title="Open settings" id="settingsBtn">⚙️ Settings</button>
+            <button class="logout-btn" title="Logout" id="logoutBtn">🚪 Logout</button>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <h1 id="headerTitle">TMC Dashboard</h1>
+                <div id="loading" class="loading" style="display: none;">Loading...</div>
+            </header>
+
+            <section id="teacherFormSection" class="form-section" style="display: none;">
+                <h2>Add Teacher</h2>
+                <form id="teacherForm" class="form-grid">
+                    <input type="text" id="teacherName" placeholder="Name" required>
+                    <input type="email" id="teacherEmail" placeholder="Email" required>
+                    <input type="text" id="teacherPhone" placeholder="Phone">
+                    <button type="button" id="saveTeacherBtn" class="form-btn save-btn">Done</button>
+                </form>
+            </section>
+
+            <section id="setupFormSection" class="form-section" style="display: none;">
+                <h2>Setup Options</h2>
+                <form id="setupForm" class="form-grid">
+                    <input type="text" id="subjectCodesInput" placeholder="Subject Codes (e.g., MATH101, ENG102)">
+                    <input type="text" id="shiftsInput" placeholder="Shifts (e.g., Morning, Afternoon)">
+                    <input type="text" id="packetCodesInput" placeholder="Packet Codes (e.g., P001, P002)">
+                    <input type="text" id="totalExamsInput" placeholder="Total Exams (e.g., 25, 50)">
+                    <button type="button" id="saveSetupBtn" class="form-btn save-btn">Save</button>
+                </form>
+            </section>
+
+            <section id="assignmentFormSection" class="form-section" style="display: none;">
+                <h2>Assign Task</h2>
+                <form id="assignForm" class="form-grid">
+                    <select id="teacherId"></select>
+                    <select id="subjectCode"></select>
+                    <select id="shift"></select>
+                    <select id="packetCode"></select>
+                    <input type="number" id="totalExams" placeholder="Total Exams" min="1" step="1">
+                    <input type="date" id="dueDate" placeholder="Due Date">
+                    <label><input type="checkbox" id="isExternal"> External</label>
+                    <select id="status">
+                        <option value="Assigned">Assigned</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                    <button type="button" id="saveAssignmentBtn" class="form-btn">Done</button>
+                </form>
+            </section>
+
+            <section id="examSchedulerSection" class="form-section" style="display: none;">
+                <h2>Schedule Exam</h2>
+                <form class="form-grid">
+                    <input type="text" id="examTitle" placeholder="Exam Title">
+                    <select id="examSubject"></select>
+                    <select id="examShift"></select>
+                    <input type="date" id="examDate">
+                    <select id="checkingTeacher"></select>
+                    <input type="date" id="checkingDeadline">
+                    <select id="examStatus">
+                        <option value="Pending">Pending</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                    <button type="button" id="saveExamBtn" class="form-btn save-btn">Save</button>
+                    <button type="button" id="viewExamCalendarBtn" class="form-btn view-btn">Calendar</button>
+                </form>
+                <div id="examCalendar" style="display: none;"></div>
+            </section>
+
+            <section class="data-section">
+                <h2>Teachers</h2>
+                <table id="teacherTable">
+                    <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Actions</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </section>
+
+            <section class="data-section" id="assignmentsSection">
+                <h2>Assignments</h2>
+                <div class="filter-bar">
+                    <input type="text" id="searchInput" placeholder="Search...">
+                    <select id="filterTeacher"></select>
+                    <select id="filterStatus">
+                        <option value="">All Status</option>
+                        <option value="Assigned">Assigned</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                    <button class="form-btn save-btn" id="bulkCompleteBtn">Bulk Complete</button>
+                </div>
+                <table id="assignmentTable">
+                    <thead><tr><th>Teacher</th><th>Subject</th><th>Shift</th><th>Packet</th><th>Exams</th><th>Due Date</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div class="pagination">
+                    <button id="prevPageBtn">Previous</button>
+                    <span id="pageInfo"></span>
+                    <button id="nextPageBtn">Next</button>
+                </div>
+            </section>
+
+            <section id="analyticsSection" class="data-section" style="display: none;">
+                <h2>Analytics</h2>
+                <div class="charts">
+                    <canvas id="totalExamsChart" width="400" height="200"></canvas>
+                    <canvas id="completedExamsChart" width="400" height="200"></canvas>
+                    <canvas id="workloadChart" width="400" height="200"></canvas>
+                </div>
+            </section>
+
+            <div id="settingsModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <span class="close-btn" id="closeSettingsBtn">×</span>
+                    <h2>Settings</h2>
+                    <div class="settings-options">
+                        <label>Theme:</label>
+                        <select id="themeSelect">
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                        </select>
+                        <button id="exportTeachersBtn">⬇️ Export Teachers</button>
+                        <button id="exportAssignmentsBtn">⬇️ Export Assignments</button>
+                        <button id="exportRecordsBtn">⬇️ Export Records</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Teacher Panel Placeholder -->
+    <div id="teacherPanel" style="display: none; padding: 20px; text-align: center;"></div>
+
+    <!-- External Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" src="auth.js"></script>
+    <script type="module" src="dataOperations.js"></script>
+    <script type="module" src="uiOperations.js"></script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
