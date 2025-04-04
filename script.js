@@ -47,7 +47,19 @@ function setupMobileMenu() {
 
 function handleUserLogin(user) {
     if (!user) return;
-    if (user.email === "akhil@gmail.com") {
+
+    // Define admin credentials
+    const adminEmail = "akhilgoel985@gmail.com";
+    const adminPassword = "123456"; // Note: In a real application, this should be more secure
+
+    // Check if the user is the admin
+    const isAdmin = user.email === adminEmail;
+
+    // For admin, we'll need to verify the password during login
+    // Since we can't access the password directly after login due to Firebase security,
+    // we'll handle this in the login function instead (see below)
+
+    if (isAdmin) {
         document.getElementById("dashboardContainer").style.display = "block";
         document.getElementById("teacherPanel").style.display = "none";
         DataOps.loadInitialData();
@@ -79,58 +91,98 @@ function resetAssignmentForm() {
 }
 
 function setupEventListeners() {
-    document.getElementById("loginForm").addEventListener("submit", async e => {
-        e.preventDefault();
-        const email = document.getElementById("loginEmail").value.trim();
-        const password = document.getElementById("loginPassword").value.trim();
-        try {
-            UIOps.showLoading();
-            const user = await Auth.login(email, password);
-            document.getElementById("loginModal").style.display = "none";
-            handleUserLogin(user);
-            UIOps.showNotification("Login successful!");
-        } catch (error) {
-            if (error.code === "auth/invalid-login-credentials") {
-                document.getElementById("loginError").textContent = "Account not found. Please create an account.";
-                document.getElementById("loginError").style.display = "block";
-                setTimeout(() => {
-                    document.getElementById("loginModal").style.display = "none";
-                    document.getElementById("registerModal").style.display = "flex";
-                    document.getElementById("loginError").style.display = "none"; // Clear error
-                }, 2000); // Show message for 2 seconds before redirecting
-            } else {
-                document.getElementById("loginError").textContent = error.message;
-                document.getElementById("loginError").style.display = "block";
-            }
-        } finally {
-            UIOps.hideLoading();
-        }
-    });
+// Update the login event listener to check credentials before proceeding
+document.getElementById("loginForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value.trim();
+    
+    // Define admin credentials
+    const adminEmail = "akhilgoel985@gmail.com";
+    const adminPassword = "123456";
 
-    document.getElementById("registerForm").addEventListener("submit", async e => {
-        e.preventDefault();
-        const email = document.getElementById("registerEmail").value.trim();
-        const password = document.getElementById("registerPassword").value.trim();
-        const confirm = document.getElementById("confirmPassword").value.trim();
-        if (password !== confirm) {
-            document.getElementById("registerError").textContent = "Passwords do not match";
-            document.getElementById("registerError").style.display = "block";
-            return;
+    try {
+        UIOps.showLoading();
+        const user = await Auth.login(email, password);
+        
+        // Check if it's the admin login
+        const isAdmin = email === adminEmail && password === adminPassword;
+
+        document.getElementById("loginModal").style.display = "none";
+        
+        if (isAdmin) {
+            document.getElementById("dashboardContainer").style.display = "block";
+            document.getElementById("teacherPanel").style.display = "none";
+            DataOps.loadInitialData();
+        } else {
+            document.getElementById("dashboardContainer").style.display = "none";
+            const panel = document.getElementById("teacherPanel");
+            panel.style.display = "block";
+            panel.innerHTML = `
+                <h1>Teacher Panel</h1>
+                <p>Welcome, ${user.email}!</p>
+                <button id="teacherLogoutBtn" class="form-btn">Logout</button>
+            `;
+            document.getElementById("teacherLogoutBtn").addEventListener("click", Auth.logout);
         }
-        try {
-            UIOps.showLoading();
-            await Auth.register(email, password);
-            const user = await Auth.login(email, password);
-            document.getElementById("registerModal").style.display = "none";
-            handleUserLogin(user);
-            UIOps.showNotification("Registration successful!");
-        } catch (error) {
-            document.getElementById("registerError").textContent = error.message;
-            document.getElementById("registerError").style.display = "block";
-        } finally {
-            UIOps.hideLoading();
+        
+        UIOps.showNotification("Login successful!");
+    } catch (error) {
+        if (error.code === "auth/invalid-login-credentials") {
+            document.getElementById("loginError").textContent = "Account not found. Please create an account.";
+            document.getElementById("loginError").style.display = "block";
+            setTimeout(() => {
+                document.getElementById("loginModal").style.display = "none";
+                document.getElementById("registerModal").style.display = "flex";
+                document.getElementById("loginError").style.display = "none";
+            }, 2000);
+        } else {
+            document.getElementById("loginError").textContent = error.message;
+            document.getElementById("loginError").style.display = "block";
         }
-    });
+    } finally {
+        UIOps.hideLoading();
+    }
+});
+
+// Update the register event listener to always redirect to teacher panel
+document.getElementById("registerForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const email = document.getElementById("registerEmail").value.trim();
+    const password = document.getElementById("registerPassword").value.trim();
+    const confirm = document.getElementById("confirmPassword").value.trim();
+    
+    if (password !== confirm) {
+        document.getElementById("registerError").textContent = "Passwords do not match";
+        document.getElementById("registerError").style.display = "block";
+        return;
+    }
+    
+    try {
+        UIOps.showLoading();
+        await Auth.register(email, password);
+        const user = await Auth.login(email, password);
+        document.getElementById("registerModal").style.display = "none";
+        
+        // Always redirect to teacher panel after registration
+        document.getElementById("dashboardContainer").style.display = "none";
+        const panel = document.getElementById("teacherPanel");
+        panel.style.display = "block";
+        panel.innerHTML = `
+            <h1>Teacher Panel</h1>
+            <p>Welcome, ${user.email}!</p>
+            <button id="teacherLogoutBtn" class="form-btn">Logout</button>
+        `;
+        document.getElementById("teacherLogoutBtn").addEventListener("click", Auth.logout);
+        
+        UIOps.showNotification("Registration successful!");
+    } catch (error) {
+        document.getElementById("registerError").textContent = error.message;
+        document.getElementById("registerError").style.display = "block";
+    } finally {
+        UIOps.hideLoading();
+    }
+});
 
     document.getElementById("logoutBtn").addEventListener("click", async () => {
         try {
@@ -308,6 +360,54 @@ function handleResize() {
 }
 
 window.addEventListener("resize", debounce(handleResize, 100));
+
+
+function setupTeacherMobileMenu() {
+    const hamburgerBtn = document.getElementById("teacherHamburgerBtn");
+    const sidebar = document.getElementById("teacherSidebar");
+
+    if (hamburgerBtn && sidebar) {
+        hamburgerBtn.addEventListener("click", () => {
+            sidebar.classList.toggle("active");
+            document.body.style.overflow = sidebar.classList.contains("active") ? "hidden" : "auto";
+        });
+
+        document.addEventListener("click", (e) => {
+            if (window.innerWidth <= 768 && 
+                !sidebar.contains(e.target) && 
+                !hamburgerBtn.contains(e.target) && 
+                sidebar.classList.contains("active")) {
+                sidebar.classList.remove("active");
+                document.body.style.overflow = "auto";
+            }
+        });
+    }
+}
+
+function setupTeacherEventListeners() {
+    document.getElementById("teacherAssignmentsBtn").addEventListener("click", () => {
+        UIOps.toggleTeacherSection("teacherAssignmentsSection");
+    });
+    document.getElementById("teacherAnalyticsBtn").addEventListener("click", () => {
+        UIOps.toggleTeacherSection("teacherAnalyticsSection");
+        UIOps.loadTeacherAnalytics(DataOps.getAssignments(), Auth.getCurrentUser().uid);
+    });
+    document.getElementById("teacherLogoutBtn").addEventListener("click", Auth.logout);
+
+    document.getElementById("teacherPrevPageBtn").addEventListener("click", () => 
+        UIOps.loadTeacherAssignments(DataOps.getAssignments(), Auth.getCurrentUser().uid, UIOps.teacherCurrentPage - 1));
+    document.getElementById("teacherNextPageBtn").addEventListener("click", () => 
+        UIOps.loadTeacherAssignments(DataOps.getAssignments(), Auth.getCurrentUser().uid, UIOps.teacherCurrentPage + 1));
+    document.getElementById("teacherSearchInput").addEventListener("input", debounce(() => 
+        UIOps.loadTeacherAssignments(DataOps.getAssignments(), Auth.getCurrentUser().uid, 1), 300));
+
+    document.querySelector("#teacherPanel .main-content").addEventListener("click", async e => {
+        const target = e.target;
+        if (target.classList.contains("mark-completed-btn")) {
+            await DataOps.markAssignmentCompleted(target.dataset.id);
+        }
+    });
+}
 
 window.onload = () => {
     UIOps.showLoading();
