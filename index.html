@@ -188,8 +188,71 @@
         </main>
     </div>
 
-    <!-- Teacher Panel Placeholder -->
-    <div id="teacherPanel" style="display: none; padding: 20px; text-align: center;"></div>
+<!-- Teacher Panel -->
+<div id="teacherPanel" style="display: none;">
+    <header class="mobile-header">
+        <h1 id="mobileTeacherHeaderTitle">Teacher Panel</h1>
+        <button class="hamburger" id="teacherHamburgerBtn" aria-label="Toggle menu">☰</button>
+    </header>
+    <div class="dashboard">
+        <aside class="sidebar" id="teacherSidebar">
+            <h2>Teacher Dashboard</h2>
+            <button class="close-sidebar">×</button>
+            <nav>
+                <button title="View your assignments" id="teacherAssignmentsBtn">📋 My Assignments</button>
+                <button title="View your analytics" id="teacherAnalyticsBtn">📈 My Analytics</button>
+            </nav>
+            <button class="logout-btn" title="Logout" id="teacherLogoutBtn">🚪 Logout</button>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <h1 id="teacherHeaderTitle">Teacher Panel</h1>
+                <div id="teacherLoading" class="loading" style="display: none;">Loading...</div>
+            </header>
+
+            <section id="teacherAssignmentsSection" class="data-section">
+                <h2>My Assignments</h2>
+                <div class="filter-bar">
+                    <input type="text" id="teacherSearchInput" placeholder="Search...">
+                    <select id="teacherFilterStatus">
+                        <option value="">All Status</option>
+                        <option value="Assigned">Assigned</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
+                <table id="teacherAssignmentTable">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Shift</th>
+                            <th>Packet</th>
+                            <th>Exams</th>
+                            <th>Due Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div class="pagination">
+                    <button id="teacherPrevPageBtn">Previous</button>
+                    <span id="teacherPageInfo"></span>
+                    <button id="teacherNextPageBtn">Next</button>
+                </div>
+            </section>
+
+            <section id="teacherAnalyticsSection" class="data-section" style="display: none;">
+                <h2>My Analytics</h2>
+                <div class="charts">
+                    <canvas id="teacherWorkloadChart" width="400" height="200"></canvas>
+                    <canvas id="teacherCompletionChart" width="400" height="200"></canvas>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
 
     <!-- External Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
