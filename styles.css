@@ -2912,3 +2912,51 @@ tr:hover td {
         grid-template-columns: 1fr;
     }
 }
+
+/* Add to styles.css */
+
+/* Teacher Panel Specific Styles */
+#teacherPanel .dashboard {
+    width: 100%;
+    min-height: 100vh;
+}
+
+#teacherPanel .sidebar {
+    width: 250px;
+    background: var(--sidebar-bg);
+    padding: 20px;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    transition: transform 0.3s ease;
+    z-index: 999;
+}
+
+#teacherPanel .main-content {
+    margin-left: 250px;
+}
+
+@media (max-width: 768px) {
+    #teacherPanel .mobile-header {
+        display: flex;
+    }
+
+    #teacherPanel .sidebar {
+        transform: translateX(-100%);
+        width: 80%;
+        max-width: 300px;
+    }
+
+    #teacherPanel .sidebar.active {
+        transform: translateX(0);
+    }
+
+    #teacherPanel .main-content {
+        margin-left: 0;
+        padding-top: 70px;
+    }
+}
